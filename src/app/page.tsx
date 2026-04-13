@@ -30,6 +30,7 @@ export default function Home() {
   } = useSpeechSynthesis();
 
   const lastSpokenIdRef = useRef<string | null>(null);
+  const spokenCharsRef = useRef(0);
 
   const handleSend = useCallback(
     (text: string) => {
@@ -54,18 +55,34 @@ export default function Home() {
     stopListening,
   } = useSpeechRecognition(handleSpeechResult);
 
-  // Auto-speak new assistant messages when voice is enabled
+  // Speak sentences as they stream in (don't wait for completion)
   useEffect(() => {
-    if (!isVoiceEnabled || messages.length === 0 || isStreaming) return;
+    if (!isVoiceEnabled || messages.length === 0) return;
 
     const lastMessage = messages[messages.length - 1];
-    if (
-      lastMessage.role === "assistant" &&
-      lastMessage.content &&
-      lastMessage.id !== lastSpokenIdRef.current
-    ) {
+    if (lastMessage.role !== "assistant" || !lastMessage.content) return;
+
+    // New message — reset spoken position
+    if (lastMessage.id !== lastSpokenIdRef.current) {
       lastSpokenIdRef.current = lastMessage.id;
-      setTimeout(() => speak(lastMessage.content), 200);
+      spokenCharsRef.current = 0;
+    }
+
+    const content = lastMessage.content;
+    const unspoken = content.slice(spokenCharsRef.current);
+
+    // Find complete sentences in the unspoken portion
+    const sentenceMatch = unspoken.match(/^(.*?[.!?])\s/);
+
+    if (sentenceMatch) {
+      // Speak the complete sentence
+      const sentence = sentenceMatch[1];
+      spokenCharsRef.current += sentenceMatch[0].length;
+      speak(sentence);
+    } else if (!isStreaming && unspoken.trim().length > 0) {
+      // Streaming done — speak any remaining text
+      spokenCharsRef.current = content.length;
+      speak(unspoken.trim());
     }
   }, [messages, isStreaming, isVoiceEnabled, speak]);
 

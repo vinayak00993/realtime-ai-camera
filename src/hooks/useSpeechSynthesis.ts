@@ -74,34 +74,29 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
   const speak = useCallback(
     (text: string) => {
       if (!isEnabled || !text) return;
-      cancel();
 
-      // Split into sentences to avoid Chrome's ~15s cutoff
-      const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+      // Queue the text as a single utterance (don't cancel ongoing speech)
+      const utterance = new SpeechSynthesisUtterance(text.trim());
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
 
-      sentences.forEach((sentence, i) => {
-        const trimmed = sentence.trim();
-        if (!trimmed) return;
+      if (preferredVoiceRef.current) {
+        utterance.voice = preferredVoiceRef.current;
+      }
 
-        const utterance = new SpeechSynthesisUtterance(trimmed);
-        utterance.rate = 1.05;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-
-        if (preferredVoiceRef.current) {
-          utterance.voice = preferredVoiceRef.current;
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => {
+        // Only set not speaking if nothing else is queued
+        if (!window.speechSynthesis.speaking) {
+          setIsSpeaking(false);
         }
+      };
+      utterance.onerror = () => setIsSpeaking(false);
 
-        if (i === 0) utterance.onstart = () => setIsSpeaking(true);
-        if (i === sentences.length - 1) {
-          utterance.onend = () => setIsSpeaking(false);
-          utterance.onerror = () => setIsSpeaking(false);
-        }
-
-        window.speechSynthesis.speak(utterance);
-      });
+      window.speechSynthesis.speak(utterance);
     },
-    [isEnabled, cancel]
+    [isEnabled]
   );
 
   return {
