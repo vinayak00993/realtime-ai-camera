@@ -16,8 +16,8 @@ export async function POST(request: Request) {
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 80,
-      system: `You are a real-time AI companion. Describe what you see in ONE short sentence (max 15 words). Be casual and observational. No questions, no suggestions, no elaboration.
+      max_tokens: 40,
+      system: `Label what you see in 3-8 words. Like a caption. No full sentences. No punctuation at the end. No questions. No suggestions. Examples: "White mug with Tamil script" or "Laptop on wooden desk" or "Cooking pasta on stovetop"
 
 ${context}`,
       messages: [
@@ -34,7 +34,7 @@ ${context}`,
             },
             {
               type: "text",
-              text: "Briefly note what you see.",
+              text: "Label this.",
             },
           ],
         },
