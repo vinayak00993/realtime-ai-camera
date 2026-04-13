@@ -16,8 +16,8 @@ export async function POST(request: Request) {
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 150,
-      system: `You are a real-time AI companion observing through a user's camera. Give a brief 1-2 sentence observation about what you see. Be conversational and helpful, like a friend looking over their shoulder. Focus on what's new or interesting. If nothing has changed, say so briefly.
+      max_tokens: 80,
+      system: `You are a real-time AI companion. Describe what you see in ONE short sentence (max 15 words). Be casual and observational. No questions, no suggestions, no elaboration.
 
 ${context}`,
       messages: [
@@ -34,7 +34,7 @@ ${context}`,
             },
             {
               type: "text",
-              text: "What do you see? Be brief.",
+              text: "Briefly note what you see.",
             },
           ],
         },

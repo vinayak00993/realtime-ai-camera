@@ -46,8 +46,8 @@ export default function Home() {
       timestamp: latestAnalysis.timestamp,
     };
 
-    // Keep only the last 3 Gemini observations in chat
-    geminiMessagesRef.current = [...geminiMessagesRef.current.slice(-2), msg];
+    // Only keep the most recent observation (replace previous)
+    geminiMessagesRef.current = [msg];
   }, [latestAnalysis]);
 
   // Merge Gemini messages with Claude messages for display
