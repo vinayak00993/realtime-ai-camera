@@ -20,17 +20,18 @@ export function useGeminiAnalysis(
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastProcessedTimestamp = useRef<number>(0);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const isInFlightRef = useRef(false);
+  const pendingFrameRef = useRef<FrameData | null>(null);
+  const consecutiveErrorsRef = useRef(0);
 
   const analyze = useCallback(async (frame: FrameData) => {
-    // Cancel any in-flight request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+    // Don't fire if a request is already in-flight — queue this frame instead
+    if (isInFlightRef.current) {
+      pendingFrameRef.current = frame;
+      return;
     }
 
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
+    isInFlightRef.current = true;
     setIsAnalyzing(true);
     setError(null);
 
@@ -41,7 +42,6 @@ export function useGeminiAnalysis(
         body: JSON.stringify({
           image: frame.base64,
         }),
-        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -49,6 +49,7 @@ export function useGeminiAnalysis(
       }
 
       const data: AnalysisResult = await res.json();
+      consecutiveErrorsRef.current = 0;
 
       setLatestAnalysis(data);
       setRecentAnalyses((prev) => {
@@ -56,10 +57,22 @@ export function useGeminiAnalysis(
         return updated.slice(-MAX_RECENT);
       });
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Analysis failed");
+      consecutiveErrorsRef.current++;
+      // Only show error after 3 consecutive failures to avoid flashing
+      if (consecutiveErrorsRef.current >= 3) {
+        setError(err instanceof Error ? err.message : "Analysis failed");
+      }
     } finally {
       setIsAnalyzing(false);
+      isInFlightRef.current = false;
+
+      // Process the most recent pending frame (drop any older ones)
+      const pending = pendingFrameRef.current;
+      pendingFrameRef.current = null;
+      if (pending) {
+        // Small delay to avoid hammering the API
+        setTimeout(() => analyze(pending), 500);
+      }
     }
   }, []);
 

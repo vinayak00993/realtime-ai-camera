@@ -28,8 +28,8 @@ export interface SamplerConfig {
 }
 
 export const DEFAULT_SAMPLER_CONFIG: SamplerConfig = {
-  diffThreshold: 0.15,
-  minInterval: 2000,
+  diffThreshold: 0.20,
+  minInterval: 3000,
   maxInterval: 10000,
   checkInterval: 500,
   sendWidth: 640,

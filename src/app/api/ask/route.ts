@@ -68,7 +68,10 @@ export async function POST(request: Request) {
             max_tokens: 1024,
             system: `You are a helpful real-time AI companion. The user is showing you what they're working on through their camera. Be conversational, practical, and concise. Give actionable advice.
 
-${analysisContext}`,
+IMPORTANT: Another AI has been continuously analyzing the camera feed. Trust and use these observations as ground truth about what the user is doing:
+${analysisContext || "No scene observations available yet."}
+
+When answering, be consistent with these observations. If they say the text is Tamil, it is Tamil — do not contradict them.`,
             messages,
           });
 

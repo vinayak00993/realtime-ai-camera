@@ -29,7 +29,7 @@ export default function Home() {
     cancel: cancelSpeech,
   } = useSpeechSynthesis();
 
-  const lastSpokenRef = useRef<string | null>(null);
+  const lastSpokenIdRef = useRef<string | null>(null);
 
   const handleSend = useCallback(
     (text: string) => {
@@ -56,17 +56,17 @@ export default function Home() {
 
   // Auto-speak new assistant messages when voice is enabled
   useEffect(() => {
-    if (!isVoiceEnabled || messages.length === 0) return;
+    if (!isVoiceEnabled || messages.length === 0 || isStreaming) return;
 
     const lastMessage = messages[messages.length - 1];
     if (
       lastMessage.role === "assistant" &&
       lastMessage.content &&
-      !isStreaming &&
-      lastMessage.content !== lastSpokenRef.current
+      lastMessage.id !== lastSpokenIdRef.current
     ) {
-      lastSpokenRef.current = lastMessage.content;
-      speak(lastMessage.content);
+      lastSpokenIdRef.current = lastMessage.id;
+      // Small delay to ensure content is fully settled
+      setTimeout(() => speak(lastMessage.content), 200);
     }
   }, [messages, isStreaming, isVoiceEnabled, speak]);
 
