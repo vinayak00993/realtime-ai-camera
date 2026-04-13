@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { AnalysisResult, FrameData } from "@/types";
 
-interface UseGeminiAnalysisReturn {
+interface UseAnalysisReturn {
   latestAnalysis: AnalysisResult | null;
   recentAnalyses: AnalysisResult[];
   isAnalyzing: boolean;
@@ -14,7 +14,7 @@ const MAX_RECENT = 10;
 
 export function useGeminiAnalysis(
   latestFrame: FrameData | null
-): UseGeminiAnalysisReturn {
+): UseAnalysisReturn {
   const [latestAnalysis, setLatestAnalysis] = useState<AnalysisResult | null>(null);
   const [recentAnalyses, setRecentAnalyses] = useState<AnalysisResult[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -23,9 +23,9 @@ export function useGeminiAnalysis(
   const isInFlightRef = useRef(false);
   const pendingFrameRef = useRef<FrameData | null>(null);
   const consecutiveErrorsRef = useRef(0);
+  const recentTextsRef = useRef<string[]>([]);
 
   const analyze = useCallback(async (frame: FrameData) => {
-    // Don't fire if a request is already in-flight — queue this frame instead
     if (isInFlightRef.current) {
       pendingFrameRef.current = frame;
       return;
@@ -41,6 +41,7 @@ export function useGeminiAnalysis(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           image: frame.base64,
+          recentObservations: recentTextsRef.current.slice(-3),
         }),
       });
 
@@ -51,6 +52,9 @@ export function useGeminiAnalysis(
       const data: AnalysisResult = await res.json();
       consecutiveErrorsRef.current = 0;
 
+      // Track recent observation texts to avoid repetition
+      recentTextsRef.current = [...recentTextsRef.current.slice(-4), data.analysis];
+
       setLatestAnalysis(data);
       setRecentAnalyses((prev) => {
         const updated = [...prev, data];
@@ -58,7 +62,6 @@ export function useGeminiAnalysis(
       });
     } catch (err) {
       consecutiveErrorsRef.current++;
-      // Only show error after 3 consecutive failures to avoid flashing
       if (consecutiveErrorsRef.current >= 3) {
         setError(err instanceof Error ? err.message : "Analysis failed");
       }
@@ -66,11 +69,9 @@ export function useGeminiAnalysis(
       setIsAnalyzing(false);
       isInFlightRef.current = false;
 
-      // Process the most recent pending frame (drop any older ones)
       const pending = pendingFrameRef.current;
       pendingFrameRef.current = null;
       if (pending) {
-        // Small delay to avoid hammering the API
         setTimeout(() => analyze(pending), 500);
       }
     }
