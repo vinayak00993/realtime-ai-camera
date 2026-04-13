@@ -7,6 +7,7 @@ interface StatusIndicatorProps {
   isAnalyzing: boolean;
   frameCount: number;
   isActive: boolean;
+  error: string | null;
 }
 
 export function StatusIndicator({
@@ -14,6 +15,7 @@ export function StatusIndicator({
   isAnalyzing,
   frameCount,
   isActive,
+  error,
 }: StatusIndicatorProps) {
   return (
     <div className="absolute top-0 left-0 right-0 p-3 pointer-events-none">
@@ -30,6 +32,13 @@ export function StatusIndicator({
           {isAnalyzing && " · Analyzing..."}
         </span>
       </div>
+
+      {/* Error display */}
+      {error && (
+        <div className="bg-red-900/60 backdrop-blur-sm rounded-lg px-3 py-2 max-w-full mb-2">
+          <p className="text-sm text-red-200 leading-snug">{error}</p>
+        </div>
+      )}
 
       {/* Latest analysis */}
       {analysis && (

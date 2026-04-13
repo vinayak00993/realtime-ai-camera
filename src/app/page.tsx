@@ -18,7 +18,7 @@ export default function Home() {
     videoRef,
     isReady
   );
-  const { latestAnalysis, recentAnalyses, isAnalyzing } =
+  const { latestAnalysis, recentAnalyses, isAnalyzing, error: geminiError } =
     useGeminiAnalysis(latestFrame);
   const { messages, isStreaming, ask } = useClaudeReasoning();
   const {
@@ -98,6 +98,7 @@ export default function Home() {
         isAnalyzing={isAnalyzing}
         frameCount={frameCount}
         isActive={isActive}
+        error={geminiError}
       />
 
       <ChatPanel messages={messages} isStreaming={isStreaming} />
