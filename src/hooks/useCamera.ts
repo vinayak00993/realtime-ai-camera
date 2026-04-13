@@ -61,13 +61,49 @@ export function useCamera(): UseCameraReturn {
     startCamera(newFacing);
   }, [facingMode, startCamera]);
 
+  // Stop all tracks helper
+  const stopAllTracks = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsReady(false);
+  }, []);
+
   useEffect(() => {
     startCamera(facingMode);
 
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+    // Release camera when page is hidden (user switches tabs, locks phone, etc.)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopAllTracks();
+      } else {
+        startCamera(facingMode);
       }
+    };
+
+    // Release camera when page unloads
+    const handleBeforeUnload = () => {
+      stopAllTracks();
+    };
+
+    // iOS Safari: release on pagehide (more reliable than beforeunload)
+    const handlePageHide = () => {
+      stopAllTracks();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      stopAllTracks();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", handlePageHide);
     };
     // Only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps

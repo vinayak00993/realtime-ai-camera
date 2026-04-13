@@ -65,6 +65,22 @@ export function useSpeechRecognition(
     };
 
     recognitionRef.current = recognition;
+
+    // Stop recognition when page is hidden
+    const handleVisibilityChange = () => {
+      if (document.hidden && recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+        setIsListening(false);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+      }
+    };
   }, []);
 
   const startListening = useCallback(() => {
