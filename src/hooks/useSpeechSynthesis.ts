@@ -14,11 +14,30 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const warmedUpRef = useRef(false);
 
   const cancel = useCallback(() => {
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
   }, []);
+
+  // Mobile browsers require a user-initiated speech event before TTS works.
+  // We fire a silent utterance on the first enable toggle to "warm up" the engine.
+  const warmUp = useCallback(() => {
+    if (warmedUpRef.current) return;
+    const silent = new SpeechSynthesisUtterance("");
+    silent.volume = 0;
+    window.speechSynthesis.speak(silent);
+    warmedUpRef.current = true;
+  }, []);
+
+  const setIsEnabledWrapped = useCallback(
+    (enabled: boolean) => {
+      if (enabled) warmUp();
+      setIsEnabled(enabled);
+    },
+    [warmUp]
+  );
 
   const speak = useCallback(
     (text: string) => {
@@ -27,20 +46,39 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
       // Cancel any ongoing speech
       cancel();
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
+      // Chrome mobile bug: long text gets cut off after ~15s.
+      // Split into sentences and queue them.
+      const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
 
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
+      sentences.forEach((sentence, i) => {
+        const trimmed = sentence.trim();
+        if (!trimmed) return;
 
-      utteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+        const utterance = new SpeechSynthesisUtterance(trimmed);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        if (i === 0) {
+          utterance.onstart = () => setIsSpeaking(true);
+        }
+        if (i === sentences.length - 1) {
+          utterance.onend = () => setIsSpeaking(false);
+          utterance.onerror = () => setIsSpeaking(false);
+        }
+
+        utteranceRef.current = utterance;
+        window.speechSynthesis.speak(utterance);
+      });
     },
     [isEnabled, cancel]
   );
 
-  return { isSpeaking, isEnabled, setIsEnabled, speak, cancel };
+  return {
+    isSpeaking,
+    isEnabled,
+    setIsEnabled: setIsEnabledWrapped,
+    speak,
+    cancel,
+  };
 }
