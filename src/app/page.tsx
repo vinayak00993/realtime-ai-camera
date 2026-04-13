@@ -90,10 +90,11 @@ export default function Home() {
     if (isListening) {
       stopListening();
     } else {
-      if (isSpeaking) cancelSpeech();
+      // Always cancel speech (queue may have pending utterances even if isSpeaking is false)
+      cancelSpeech();
       startListening();
     }
-  }, [isListening, startListening, stopListening, isSpeaking, cancelSpeech]);
+  }, [isListening, startListening, stopListening, cancelSpeech]);
 
   const handleToggleVoice = useCallback(() => {
     if (isVoiceEnabled) cancelSpeech();
