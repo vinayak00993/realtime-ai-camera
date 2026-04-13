@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseSpeechSynthesisReturn {
   isSpeaking: boolean;
@@ -13,16 +13,48 @@ interface UseSpeechSynthesisReturn {
 export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const warmedUpRef = useRef(false);
+  const preferredVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+
+  // Find the best available voice on this device
+  useEffect(() => {
+    const findBestVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) return;
+
+      // Prefer natural/enhanced voices, ranked by quality
+      const preferred = [
+        "Google UK English Female",
+        "Google US English",
+        "Samantha", // iOS high quality
+        "Karen",    // iOS
+        "Daniel",   // iOS
+        "Microsoft Zira",
+        "Microsoft David",
+      ];
+
+      for (const name of preferred) {
+        const match = voices.find((v) => v.name.includes(name));
+        if (match) {
+          preferredVoiceRef.current = match;
+          return;
+        }
+      }
+
+      // Fallback: pick the first English voice
+      const english = voices.find((v) => v.lang.startsWith("en"));
+      if (english) preferredVoiceRef.current = english;
+    };
+
+    findBestVoice();
+    window.speechSynthesis.onvoiceschanged = findBestVoice;
+  }, []);
 
   const cancel = useCallback(() => {
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
   }, []);
 
-  // Mobile browsers require a user-initiated speech event before TTS works.
-  // We fire a silent utterance on the first enable toggle to "warm up" the engine.
   const warmUp = useCallback(() => {
     if (warmedUpRef.current) return;
     const silent = new SpeechSynthesisUtterance("");
@@ -42,12 +74,9 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
   const speak = useCallback(
     (text: string) => {
       if (!isEnabled || !text) return;
-
-      // Cancel any ongoing speech
       cancel();
 
-      // Chrome mobile bug: long text gets cut off after ~15s.
-      // Split into sentences and queue them.
+      // Split into sentences to avoid Chrome's ~15s cutoff
       const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
 
       sentences.forEach((sentence, i) => {
@@ -55,19 +84,20 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
         if (!trimmed) return;
 
         const utterance = new SpeechSynthesisUtterance(trimmed);
-        utterance.rate = 1.0;
+        utterance.rate = 1.05;
         utterance.pitch = 1.0;
         utterance.volume = 1.0;
 
-        if (i === 0) {
-          utterance.onstart = () => setIsSpeaking(true);
+        if (preferredVoiceRef.current) {
+          utterance.voice = preferredVoiceRef.current;
         }
+
+        if (i === 0) utterance.onstart = () => setIsSpeaking(true);
         if (i === sentences.length - 1) {
           utterance.onend = () => setIsSpeaking(false);
           utterance.onerror = () => setIsSpeaking(false);
         }
 
-        utteranceRef.current = utterance;
         window.speechSynthesis.speak(utterance);
       });
     },

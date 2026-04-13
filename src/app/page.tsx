@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useCamera } from "@/hooks/useCamera";
 import { useFrameSampler } from "@/hooks/useFrameSampler";
 import { useGeminiAnalysis } from "@/hooks/useGeminiAnalysis";
@@ -11,6 +11,7 @@ import { CameraView } from "@/components/CameraView";
 import { StatusIndicator } from "@/components/StatusIndicator";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ControlBar } from "@/components/ControlBar";
+import type { ChatMessage } from "@/types";
 
 export default function Home() {
   const { videoRef, isReady, error, facingMode, toggleCamera } = useCamera();
@@ -30,6 +31,31 @@ export default function Home() {
   } = useSpeechSynthesis();
 
   const lastSpokenIdRef = useRef<string | null>(null);
+  const lastAnalysisIdRef = useRef<string | null>(null);
+  const geminiMessagesRef = useRef<ChatMessage[]>([]);
+
+  // Convert Gemini analysis into a system chat message
+  useEffect(() => {
+    if (!latestAnalysis || latestAnalysis.analysis === lastAnalysisIdRef.current) return;
+    lastAnalysisIdRef.current = latestAnalysis.analysis;
+
+    const msg: ChatMessage = {
+      id: `gemini-${latestAnalysis.timestamp}`,
+      role: "system",
+      content: latestAnalysis.analysis,
+      timestamp: latestAnalysis.timestamp,
+    };
+
+    // Keep only the last 3 Gemini observations in chat
+    geminiMessagesRef.current = [...geminiMessagesRef.current.slice(-2), msg];
+  }, [latestAnalysis]);
+
+  // Merge Gemini messages with Claude messages for display
+  const allMessages = useMemo(() => {
+    const combined = [...geminiMessagesRef.current, ...messages];
+    combined.sort((a, b) => a.timestamp - b.timestamp);
+    return combined;
+  }, [messages, latestAnalysis]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = useCallback(
     (text: string) => {
@@ -65,7 +91,6 @@ export default function Home() {
       lastMessage.id !== lastSpokenIdRef.current
     ) {
       lastSpokenIdRef.current = lastMessage.id;
-      // Small delay to ensure content is fully settled
       setTimeout(() => speak(lastMessage.content), 200);
     }
   }, [messages, isStreaming, isVoiceEnabled, speak]);
@@ -94,14 +119,13 @@ export default function Home() {
       />
 
       <StatusIndicator
-        analysis={latestAnalysis}
         isAnalyzing={isAnalyzing}
         frameCount={frameCount}
         isActive={isActive}
         error={geminiError}
       />
 
-      <ChatPanel messages={messages} isStreaming={isStreaming} />
+      <ChatPanel messages={allMessages} isStreaming={isStreaming} />
 
       <ControlBar
         onSend={handleSend}

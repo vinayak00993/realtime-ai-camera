@@ -23,7 +23,10 @@ export function ChatPanel({ messages, isStreaming }: ChatPanelProps) {
   if (messages.length === 0) return null;
 
   return (
-    <div className="absolute left-0 right-0 pointer-events-auto" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 16px))' }}>
+    <div
+      className="absolute left-0 right-0 pointer-events-auto"
+      style={{ bottom: "calc(6.5rem + env(safe-area-inset-bottom, 16px))" }}
+    >
       {/* Collapse toggle */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -36,7 +39,7 @@ export function ChatPanel({ messages, isStreaming }: ChatPanelProps) {
       {!isCollapsed && (
         <div
           ref={scrollRef}
-          className="mx-2 max-h-[40vh] overflow-y-auto rounded-xl bg-black/20 backdrop-blur-md p-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20"
+          className="mx-2 max-h-[40vh] overflow-y-auto rounded-xl bg-black/30 backdrop-blur-md p-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20"
         >
           {messages.map((msg) => (
             <ChatMessage key={msg.id} message={msg} />

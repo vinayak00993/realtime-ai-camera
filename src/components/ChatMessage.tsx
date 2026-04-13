@@ -8,6 +8,19 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
+  const isSystem = message.role === "system";
+
+  if (isSystem) {
+    return (
+      <div className="flex justify-center mb-2">
+        <div className="max-w-[90%] rounded-lg px-3 py-1.5 bg-white/8 border border-white/10">
+          <p className="text-xs text-white/50 leading-relaxed">
+            {message.content}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-2`}>
