@@ -85,7 +85,7 @@ export default function Home() {
   }, [isVoiceEnabled, setVoiceEnabled, cancelSpeech]);
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden select-none">
+    <main className="relative w-screen overflow-hidden select-none" style={{ height: '100dvh' }}>
       <CameraView
         videoRef={videoRef}
         isReady={isReady}

@@ -35,7 +35,7 @@ export function ControlBar({
   }, [input, isStreaming, onSend]);
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 p-3 pointer-events-auto">
+    <div className="absolute bottom-0 left-0 right-0 p-3 pointer-events-auto" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 16px))' }}>
       {/* Transcript preview */}
       {isListening && transcript && (
         <div className="mb-2 px-3 py-1.5 bg-black/40 backdrop-blur-sm rounded-lg">

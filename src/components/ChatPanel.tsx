@@ -23,7 +23,7 @@ export function ChatPanel({ messages, isStreaming }: ChatPanelProps) {
   if (messages.length === 0) return null;
 
   return (
-    <div className="absolute bottom-20 left-0 right-0 pointer-events-auto">
+    <div className="absolute left-0 right-0 pointer-events-auto" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 16px))' }}>
       {/* Collapse toggle */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}

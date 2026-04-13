@@ -4,6 +4,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Use dynamic viewport height for mobile browsers */
+html, body {
+  height: 100dvh;
+  height: 100vh; /* fallback */
+}
+
 body {
   background: #000;
   color: #fff;
