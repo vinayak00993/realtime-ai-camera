@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "LiveLens",
+    "slug": "livelens",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "livelens",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "LiveLens needs camera access to see what you're working on and provide real-time AI guidance.",
+        "NSMicrophoneUsageDescription": "LiveLens uses the microphone for hands-free voice commands.",
+        "NSSpeechRecognitionUsageDescription": "LiveLens uses speech recognition for voice input."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#000000"
+      },
+      "permissions": ["CAMERA", "RECORD_AUDIO"],
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "LiveLens needs camera access to see what you're working on."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
