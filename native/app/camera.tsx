@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Animated,
+  Alert,
   Keyboard,
   Platform,
 } from "react-native";
@@ -273,12 +274,21 @@ export default function CameraScreen() {
     if (last.id === lastSpokenIdRef.current) return;
 
     lastSpokenIdRef.current = last.id;
-    Speech.stop();
-    Speech.speak(last.content, {
-      language: "en-US",
-      rate: 1.0,
-      pitch: 1.0,
-    });
+
+    (async () => {
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: false,
+        });
+      } catch {}
+      Speech.stop();
+      Speech.speak(last.content, {
+        language: "en-US",
+        rate: 1.0,
+        pitch: 1.0,
+      });
+    })();
   }, [messages, isStreaming, voiceEnabled]);
 
   // Auto-scroll chat
@@ -366,17 +376,50 @@ export default function CameraScreen() {
             <Text style={s.smallBtnText}>Flip</Text>
           </Pressable>
           <Pressable
-            onPress={() => {
+            onPress={async () => {
               if (voiceEnabled) {
                 Speech.stop();
                 setVoiceEnabled(false);
               } else {
                 setVoiceEnabled(true);
-                // Test speech to verify TTS works + warm up on iOS
+                // Force audio mode for playback before speaking
+                try {
+                  await setAudioModeAsync({
+                    playsInSilentMode: true,
+                    allowsRecording: false,
+                  });
+                } catch {}
+
+                // Get available voices and pick a good iOS voice
+                let voiceId: string | undefined;
+                try {
+                  const voices = await Speech.getAvailableVoicesAsync();
+                  const enhanced = voices.find(
+                    (v) =>
+                      v.language.startsWith("en") &&
+                      (v.quality === "Enhanced" || v.identifier?.includes("premium"))
+                  );
+                  const anyEn = voices.find((v) => v.language.startsWith("en"));
+                  voiceId = enhanced?.identifier || anyEn?.identifier;
+
+                  if (voices.length === 0) {
+                    Alert.alert("No voices", "No TTS voices available on this device");
+                    return;
+                  }
+                } catch (e) {
+                  Alert.alert("Voice error", String(e));
+                  return;
+                }
+
                 Speech.speak("Voice enabled", {
                   language: "en-US",
                   rate: 1.0,
                   pitch: 1.0,
+                  voice: voiceId,
+                  onStart: () => console.log("Speech started"),
+                  onDone: () => console.log("Speech done"),
+                  onError: (err) =>
+                    Alert.alert("Speech error", JSON.stringify(err)),
                 });
               }
             }}
