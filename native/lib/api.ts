@@ -1,5 +1,25 @@
 const API_BASE = "https://realtime-ai-camera.vercel.app";
 
+export async function transcribeAudio(audioUri: string): Promise<string> {
+  const formData = new FormData();
+  // React Native FormData accepts { uri, name, type } for file uploads
+  formData.append("audio", {
+    uri: audioUri,
+    name: "recording.m4a",
+    type: "audio/m4a",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
+
+  const res = await fetch(`${API_BASE}/api/transcribe`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error(`Transcription failed: ${res.status}`);
+  const data = await res.json();
+  return data.text || "";
+}
+
 export async function analyzeFrame(
   imageBase64: string,
   recentObservations: string[]

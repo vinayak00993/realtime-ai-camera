@@ -12,8 +12,14 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Speech from "expo-speech";
+import {
+  AudioModule,
+  RecordingPresets,
+  useAudioRecorder,
+  setAudioModeAsync,
+} from "expo-audio";
 import { Ionicons } from "@expo/vector-icons";
-import { analyzeFrame, askClaude } from "../lib/api";
+import { analyzeFrame, askClaude, transcribeAudio } from "../lib/api";
 
 interface ChatMsg {
   id: string;
@@ -121,11 +127,10 @@ export default function CameraScreen() {
     };
   }, [permission?.granted, captureAndAnalyze]);
 
-  // Send a question
-  const handleSend = useCallback(async () => {
-    const text = input.trim();
+  // Send a question (from text input or voice)
+  const sendQuestion = useCallback(async (questionText: string) => {
+    const text = questionText.trim();
     if (!text || isStreaming) return;
-    setInput("");
 
     // Capture current frame
     let imageBase64: string | null = null;
@@ -181,7 +186,65 @@ export default function CameraScreen() {
       );
       setIsStreaming(false);
     }
-  }, [input, isStreaming, messages, recentAnalyses]);
+  }, [isStreaming, messages, recentAnalyses]);
+
+  // Send from text input
+  const handleSend = useCallback(() => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+    sendQuestion(text);
+  }, [input, sendQuestion]);
+
+  // Audio recording for push-to-talk
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
+  // Request audio permissions + setup on mount
+  useEffect(() => {
+    (async () => {
+      const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+      if (granted) {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: true,
+        });
+      }
+    })();
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    try {
+      if (isStreaming || isTranscribing) return;
+      Speech.stop();
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+      setIsRecording(true);
+    } catch (err) {
+      setIsRecording(false);
+    }
+  }, [audioRecorder, isStreaming, isTranscribing]);
+
+  const stopRecording = useCallback(async () => {
+    try {
+      setIsRecording(false);
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
+      if (!uri) return;
+
+      setIsTranscribing(true);
+      const text = await transcribeAudio(uri);
+      setIsTranscribing(false);
+
+      if (text.trim()) {
+        sendQuestion(text.trim());
+      }
+    } catch (err) {
+      setIsRecording(false);
+      setIsTranscribing(false);
+    }
+  }, [audioRecorder, sendQuestion]);
 
   // TTS: speak the full message once streaming completes
   useEffect(() => {
@@ -317,13 +380,31 @@ export default function CameraScreen() {
               style={s.input}
               value={input}
               onChangeText={setInput}
-              placeholder="Ask anything..."
-              placeholderTextColor="rgba(255,255,255,0.35)"
+              placeholder={
+                isRecording
+                  ? "Listening..."
+                  : isTranscribing
+                    ? "Transcribing..."
+                    : "Ask anything..."
+              }
+              placeholderTextColor="rgba(255,255,255,0.5)"
               onSubmitEditing={handleSend}
               returnKeyType="send"
-              editable={!isStreaming}
+              editable={!isStreaming && !isRecording && !isTranscribing}
             />
           </View>
+          <Pressable
+            onPressIn={startRecording}
+            onPressOut={stopRecording}
+            disabled={isStreaming || isTranscribing}
+            style={[
+              s.micBtn,
+              isRecording && s.micBtnActive,
+              (isStreaming || isTranscribing) && s.sendBtnDisabled,
+            ]}
+          >
+            <Ionicons name="mic" size={20} color="#fff" />
+          </Pressable>
           <Pressable
             onPress={handleSend}
             disabled={!input.trim() || isStreaming}
@@ -469,6 +550,18 @@ const s = StyleSheet.create({
     backgroundColor: "#3b82f6",
     alignItems: "center",
     justifyContent: "center",
+  },
+  micBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  micBtnActive: {
+    backgroundColor: "#ef4444",
+    transform: [{ scale: 1.1 }],
   },
   sendBtnDisabled: { opacity: 0.4 },
 });
