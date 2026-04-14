@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Companion",
+  title: "LiveLens — AI-Powered Camera Companion",
   description:
-    "Real-time AI video companion — point your camera, get instant guidance",
+    "Point your camera, get instant AI guidance for cooking, projects, and everyday tasks.",
   manifest: undefined,
 };
 
