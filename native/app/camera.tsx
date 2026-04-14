@@ -85,6 +85,7 @@ export default function CameraScreen() {
         base64: true,
         quality: 0.4,
         skipProcessing: true,
+        shutterSound: false,
       });
 
       if (!photo?.base64) return;
@@ -138,6 +139,7 @@ export default function CameraScreen() {
       const photo = await cameraRef.current?.takePictureAsync({
         base64: true,
         quality: 0.5,
+        shutterSound: false,
       });
       imageBase64 = photo?.base64 ?? null;
     } catch {}
@@ -201,16 +203,16 @@ export default function CameraScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
 
-  // Request audio permissions + setup on mount
+  // Request audio permissions + set playback-friendly audio mode on mount.
+  // Setting allowsRecording: true silences playback, so we only enable it
+  // when actually recording, then reset after.
   useEffect(() => {
     (async () => {
-      const { granted } = await AudioModule.requestRecordingPermissionsAsync();
-      if (granted) {
-        await setAudioModeAsync({
-          playsInSilentMode: true,
-          allowsRecording: true,
-        });
-      }
+      await AudioModule.requestRecordingPermissionsAsync();
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: false,
+      });
     })();
   }, []);
 
@@ -218,6 +220,11 @@ export default function CameraScreen() {
     try {
       if (isStreaming || isTranscribing) return;
       Speech.stop();
+      // Switch to recording mode
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+      });
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
       setIsRecording(true);
@@ -230,6 +237,11 @@ export default function CameraScreen() {
     try {
       setIsRecording(false);
       await audioRecorder.stop();
+      // Switch back to playback mode so Speech can play
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: false,
+      });
       const uri = audioRecorder.uri;
       if (!uri) return;
 
@@ -243,6 +255,13 @@ export default function CameraScreen() {
     } catch (err) {
       setIsRecording(false);
       setIsTranscribing(false);
+      // Try to restore playback mode
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: false,
+        });
+      } catch {}
     }
   }, [audioRecorder, sendQuestion]);
 
