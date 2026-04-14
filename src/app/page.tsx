@@ -2,9 +2,9 @@ import Link from "next/link";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-black text-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-black text-white flex flex-col overflow-y-auto">
       {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+      <main className="flex-1 flex flex-col items-center px-6 pt-16 pb-4 text-center">
         {/* Logo / Title */}
         <div className="mb-6 animate-fade-in">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-4 shadow-lg shadow-blue-500/20">
@@ -28,12 +28,12 @@ export default function LandingPage() {
         </div>
 
         {/* Tagline */}
-        <p className="text-lg text-white/60 max-w-sm mb-12 animate-fade-in-delay-1">
+        <p className="text-lg text-white/60 max-w-sm mb-8 animate-fade-in-delay-1">
           Your AI-powered companion for everyday tasks. Point your camera, get instant guidance.
         </p>
 
         {/* Feature cards */}
-        <div className="grid gap-4 w-full max-w-sm mb-12">
+        <div className="grid gap-4 w-full max-w-sm mb-8">
           <div className="flex items-center gap-4 bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/5 animate-slide-up-1">
             <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
