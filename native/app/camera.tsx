@@ -7,7 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Animated,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -52,6 +52,21 @@ export default function CameraScreen() {
 
   // Frame sampling
   const samplerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Keyboard height for lifting controls above keyboard
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Capture and analyze frames
   const captureAndAnalyze = useCallback(async () => {
@@ -214,10 +229,7 @@ export default function CameraScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={s.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <View style={s.container}>
       {/* Camera */}
       <CameraView ref={cameraRef} style={s.camera} facing={facing} />
 
@@ -240,7 +252,7 @@ export default function CameraScreen() {
 
       {/* Chat panel */}
       {messages.length > 0 && (
-        <View style={s.chatContainer}>
+        <View style={[s.chatContainer, { bottom: 140 + keyboardHeight }]}>
           <ScrollView
             ref={scrollRef}
             style={s.chatScroll}
@@ -269,7 +281,7 @@ export default function CameraScreen() {
       )}
 
       {/* Controls */}
-      <View style={s.controls}>
+      <View style={[s.controls, { bottom: keyboardHeight }]}>
         <View style={s.controlsTop}>
           <Pressable
             onPress={() => setFacing((f) => (f === "back" ? "front" : "back"))}
@@ -318,7 +330,7 @@ export default function CameraScreen() {
           </Pressable>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

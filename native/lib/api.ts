@@ -23,8 +23,7 @@ export async function askClaude(
   recentAnalyses: { analysis: string; timestamp: number }[],
   conversationHistory: { role: string; content: string }[],
   onChunk: (text: string) => void,
-  onDone: () => void,
-  signal?: AbortSignal
+  onDone: () => void
 ) {
   const res = await fetch(`${API_BASE}/api/ask`, {
     method: "POST",
@@ -35,34 +34,23 @@ export async function askClaude(
       recentAnalyses: recentAnalyses.slice(-5),
       conversationHistory: conversationHistory.slice(-10),
     }),
-    signal,
   });
 
   if (!res.ok) throw new Error(`Ask failed: ${res.status}`);
-  if (!res.body) throw new Error("No response body");
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
+  // React Native's fetch doesn't support ReadableStream reliably,
+  // so we read the full SSE response as text and parse events.
+  const fullText = await res.text();
+  const lines = fullText.split("\n");
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split("\n");
-
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const data = line.slice(6);
-        if (data === "[DONE]") {
-          onDone();
-          return;
-        }
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.text) onChunk(parsed.text);
-        } catch {}
-      }
+  for (const line of lines) {
+    if (line.startsWith("data: ")) {
+      const data = line.slice(6).trim();
+      if (data === "[DONE]" || !data) continue;
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.text) onChunk(parsed.text);
+      } catch {}
     }
   }
   onDone();
