@@ -183,27 +183,20 @@ export default function CameraScreen() {
     }
   }, [input, isStreaming, messages, recentAnalyses]);
 
-  // TTS: speak sentences as they stream
+  // TTS: speak the full message once streaming completes
   useEffect(() => {
-    if (!voiceEnabled || messages.length === 0) return;
+    if (!voiceEnabled || isStreaming || messages.length === 0) return;
     const last = messages[messages.length - 1];
     if (last.role !== "assistant" || !last.content) return;
+    if (last.id === lastSpokenIdRef.current) return;
 
-    if (last.id !== lastSpokenIdRef.current) {
-      lastSpokenIdRef.current = last.id;
-      spokenCharsRef.current = 0;
-    }
-
-    const unspoken = last.content.slice(spokenCharsRef.current);
-    const match = unspoken.match(/^(.*?[.!?])\s/);
-
-    if (match) {
-      spokenCharsRef.current += match[0].length;
-      Speech.speak(match[1], { language: "en-US", rate: 1.05 });
-    } else if (!isStreaming && unspoken.trim()) {
-      spokenCharsRef.current = last.content.length;
-      Speech.speak(unspoken.trim(), { language: "en-US", rate: 1.05 });
-    }
+    lastSpokenIdRef.current = last.id;
+    Speech.stop();
+    Speech.speak(last.content, {
+      language: "en-US",
+      rate: 1.0,
+      pitch: 1.0,
+    });
   }, [messages, isStreaming, voiceEnabled]);
 
   // Auto-scroll chat
@@ -292,8 +285,18 @@ export default function CameraScreen() {
           </Pressable>
           <Pressable
             onPress={() => {
-              if (voiceEnabled) Speech.stop();
-              setVoiceEnabled(!voiceEnabled);
+              if (voiceEnabled) {
+                Speech.stop();
+                setVoiceEnabled(false);
+              } else {
+                setVoiceEnabled(true);
+                // Test speech to verify TTS works + warm up on iOS
+                Speech.speak("Voice enabled", {
+                  language: "en-US",
+                  rate: 1.0,
+                  pitch: 1.0,
+                });
+              }
             }}
             style={[s.smallBtn, voiceEnabled && s.smallBtnActive]}
           >
@@ -430,7 +433,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 8,
     paddingBottom: 34,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(0,0,0,0.75)",
   },
   controlsTop: {
     flexDirection: "row",
@@ -452,8 +455,10 @@ const s = StyleSheet.create({
   inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   inputWrapper: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.22)",
     borderRadius: 50,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
     paddingHorizontal: 16,
   },
   input: { height: 44, color: "#fff", fontSize: 14 },
